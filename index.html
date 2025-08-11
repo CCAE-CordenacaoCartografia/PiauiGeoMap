@@ -283,6 +283,10 @@
   </style>
 </head>
 <body>
+  <div id="topbar">
+  <img src="logo-seplan.jpg" alt="Seplan Piauí" />
+  <span>Secretaria do Planejamento</span>
+</div>
   <div id="map"></div>
 
   <div class="map-title">PiauíGeoMap</div>
@@ -482,7 +486,20 @@ L.Popup.prototype.options.autoPanPaddingBottomRight = L.point(10, 40);
     const territoriosLayer = new L.GeoJSON.AJAX("territorios.geojson", { style: styleTerritorios, onEachFeature: onEachTerritorio });
     territoriosLayer.on('data:loaded', addLegend);
     territoriosLayer.addTo(map);
-    
+    // === Clicar fora limpa seleção ===
+map.on("click", function (e) {
+  // Limpa seleção de território
+  territorioSelecionado = null;
+  territoriosLayer.eachLayer(layer => {
+    territoriosLayer.resetStyle(layer);
+  });
+
+  // Limpa seleção de município
+  if (municipioSelecionado) {
+    municipiosLayer.resetStyle(municipioSelecionado);
+    municipioSelecionado = null;
+  }
+});
 
     // Fallback: se em 2s não criou a legenda, força criar
     setTimeout(() => {
