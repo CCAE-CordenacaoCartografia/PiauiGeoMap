@@ -487,6 +487,7 @@ L.Popup.prototype.options.autoPanPaddingBottomRight = L.point(10, 40);
     territoriosLayer.on('data:loaded', addLegend);
     territoriosLayer.addTo(map);
     // === Clicar fora limpa seleção ===
+// Clicar fora de qualquer território/município limpa seleção e fecha legenda
 map.on("click", function (e) {
   // Limpa seleção de território
   territorioSelecionado = null;
@@ -499,7 +500,20 @@ map.on("click", function (e) {
     municipiosLayer.resetStyle(municipioSelecionado);
     municipioSelecionado = null;
   }
+
+  // Fecha popups abertos
+  map.closePopup();
+
+  // Fecha a legenda
+  const legendDiv = document.querySelector('.legend');
+  const toggleBtn = document.querySelector('.legend-toggle');
+  if (legendDiv && toggleBtn && !legendDiv.classList.contains('collapsed')) {
+    legendDiv.classList.add('collapsed');
+    toggleBtn.textContent = 'Selecionar  territórios';
+    toggleBtn.classList.remove('attention'); // se quiser parar o piscar
+  }
 });
+
 
     // Fallback: se em 2s não criou a legenda, força criar
     setTimeout(() => {
@@ -545,7 +559,9 @@ map.on("click", function (e) {
             });
           });
           layer.openPopup();
+          recolherLegenda();
         }
+        
       });
     }
 
@@ -873,30 +889,18 @@ si.addEventListener('input', function(){
     const div = document.createElement('div');
     div.textContent = item.nome;
 
-    // ► Apenas zoom e destaque — NÃO abre popup
-    div.addEventListener('click', ()=>{
-      map.fitBounds(item.layer.getBounds(), { padding:[20,20] });
+div.addEventListener('click', ()=>{
+  map.fitBounds(item.layer.getBounds(), { padding:[20,20] });
+  if (municipioSelecionado) municipiosLayer.resetStyle(municipioSelecionado);
+  municipioSelecionado = item.layer;
+  item.layer.setStyle({ weight:4, color:'#ff6600', fillColor:'#ff6600', fillOpacity:0.5 });
+  item.layer.closePopup();
+  lm.style.display = 'none';
+  si.value = item.nome;
 
-      // Remove destaque anterior
-      if (municipioSelecionado) {
-        municipiosLayer.resetStyle(municipioSelecionado);
-      }
-      municipioSelecionado = item.layer;
-
-      // Aplica destaque atual
-      item.layer.setStyle({
-        weight: 4,
-        color: '#ff6600',
-        fillColor: '#ff6600',
-        fillOpacity: 0.5
-      });
-
-      // Garante que nenhuma popup seja exibida
-      item.layer.closePopup();
-
-      lm.style.display = 'none';
-      si.value = item.nome;
-    });
+  // ► Recolhe a legenda na seleção pela busca
+  recolherLegenda();
+});
 
     lm.appendChild(div);
   });
@@ -928,6 +932,15 @@ si.addEventListener('keydown', (e)=>{
     }
   }
 });
+function recolherLegenda() {
+  const legendDiv = document.querySelector('.legend');
+  const toggleBtn = document.querySelector('.legend-toggle');
+  if (legendDiv && toggleBtn) {
+    legendDiv.classList.add('collapsed');
+    toggleBtn.textContent = 'Selecionar  territórios';
+    toggleBtn.classList.remove('attention');
+  }
+}
   </script>
 </body>
 </html>
