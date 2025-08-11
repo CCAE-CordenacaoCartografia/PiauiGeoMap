@@ -131,17 +131,18 @@
 
     /* Painel de camadas embrulhado (evita empurrar seta norte e título) */
     #camadasWrapper {
-      position: fixed;
-      top: 56px !important;               /* folga p/ título e busca */
-      left: var(--gap);
-      z-index: var(--z-layers);
-      background: white;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      overflow: hidden;
-      box-shadow: var(--shadow);
-       max-width: min(92vw, 520px);
-    }
+  position: fixed;
+  top: 56px !important;
+  right: var(--gap);      /* <<< veio para a direita */
+  left: auto;            /* <<< remove âncora esquerda */
+  z-index: var(--z-layers);
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  max-width: min(92vw, 520px);
+}
     #camadasHeader {
       background: #007bff; color: #fff; padding: 6px 12px;
       font-weight: bold; font-size: 14px; cursor: pointer; user-select: none;
@@ -204,19 +205,20 @@
     .leaflet-top.leaflet-right { top: 60px !important; right: var(--gap) !important; }
 
     /* Botão de upload */
-    #uploadBtn {
-      position: fixed;
-      top: 60px;
-      right: var(--gap);
-      background: white;
-      padding: 6px 10px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      cursor: pointer;
-      z-index: var(--z-search);
-      box-shadow: var(--shadow);
-    }
-    
+
+  #uploadBtn {
+  position: fixed;
+  top: 60px;
+  left: var(--gap);       /* <<< foi para a esquerda */
+  right: auto;            /* <<< solta da direita */
+  background: white;
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  cursor: pointer;
+  z-index: var(--z-search);
+  box-shadow: var(--shadow);
+}
     #uploadInput { display: none; }
 
     /* Rosa dos ventos SBG */
