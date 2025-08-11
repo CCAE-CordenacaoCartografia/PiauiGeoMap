@@ -132,7 +132,7 @@
     /* Painel de camadas embrulhado (evita empurrar seta norte e título) */
     #camadasWrapper {
       position: fixed;
-      top: 50px;             /* folga p/ título e busca */
+      top: 56px !important;               /* folga p/ título e busca */
       left: var(--gap);
       z-index: var(--z-layers);
       background: white;
@@ -140,7 +140,7 @@
       border-radius: 6px;
       overflow: hidden;
       box-shadow: var(--shadow);
-      max-width: 320px;
+       max-width: min(92vw, 520px);
     }
     #camadasHeader {
       background: #007bff; color: #fff; padding: 6px 12px;
@@ -276,6 +276,10 @@
 .leaflet-popup-content-wrapper {
   padding: 8px; /* espaçamento interno */
 }
+/* Garante que o popup fique acima de todos os botões e painéis */
+.leaflet-pane.leaflet-popup-pane {
+  z-index: 5000 !important; /* maior que o --z-search (3000) */
+}
   </style>
 </head>
 <body>
@@ -304,6 +308,10 @@
 
   <script>
     const map = L.map('map').setView([-7, -42], 7.48);
+    // Ajusta autoPan para abrir popup deslocada dos botões do topo
+L.Popup.prototype.options.autoPan = true;
+L.Popup.prototype.options.autoPanPaddingTopLeft = L.point(10, 90);  // desloca pra baixo
+L.Popup.prototype.options.autoPanPaddingBottomRight = L.point(10, 40);
     L.control.scale().addTo(map);
 
     // Move o zoom para baixo à direita (não colide com título/busca)
