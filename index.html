@@ -146,7 +146,7 @@
     .legend {
       position: fixed;
       bottom:100px;
-      left: 80%;
+      left: 70%;
       transform: translateX(-50%);
       background: white;
       line-height: 18px;
@@ -164,7 +164,7 @@
     .legend-toggle {
       position: fixed;
       bottom: calc(var(--gap) + 48px);
-      left: 80%;
+      left: 70%;
       transform: translateX(-50%);
       display: block;
       background: #007bff; color: white;
@@ -193,7 +193,7 @@
     /* Botão de upload */
     #uploadBtn {
       position: fixed;
-      top: 100px;
+      top: 60px;
       right: var(--gap);
       background: white;
       padding: 6px 10px;
@@ -203,6 +203,7 @@
       z-index: var(--z-search);
       box-shadow: var(--shadow);
     }
+    
     #uploadInput { display: none; }
 
     /* Rosa dos ventos SBG */
@@ -225,17 +226,19 @@
     }
 
     /* Mobile */
-    @media (max-width: 768px) {
-      .map-title {
-        max-width: 60vw;
-        font-size: 0.95rem;
-      }
-      #searchContainer {
-        left: 50%; right: auto; transform: translateX(-50%);
-        top: 54px;               /* baixa a barra no mobile */
-        width: 44px;
-      }
-      #searchContainer.expanded { width: min(92vw, 520px); }
+ @media (max-width: 768px) {
+  /* mantém no topo-direito no mobile */
+  #searchContainer {
+    right: var(--gap);
+    left: auto;
+    transform: none;   /* <— remove o centrado */
+    top: var(--gap);
+    width: 44px;       /* recolhido */
+  }
+  #searchContainer.expanded {
+    width: min(92vw, 420px); /* não passa da tela */
+  }
+
 
       #camadasWrapper {
         top: 100px;
