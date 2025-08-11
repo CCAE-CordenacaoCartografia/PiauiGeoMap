@@ -92,7 +92,20 @@
       overflow: visible;      /* permite a lista “sair” do container */
     }
     #searchContainer.expanded #searchMunicipio { display: block; }
+/* REMOVE o contorno preto ao clicar */
+.leaflet-container .leaflet-interactive:focus,
+.leaflet-container .leaflet-marker-icon:focus,
+.leaflet-container .leaflet-popup-close-button:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
 
+/* opcional: popup sem sombra/borda */
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  box-shadow: none !important;
+  border: none !important;
+}
     /* Dropdown ancorado ao container da busca */
     #listaMunicipios {
       position: absolute;
