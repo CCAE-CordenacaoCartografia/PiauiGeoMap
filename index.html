@@ -52,7 +52,7 @@
     #coords {
       position: fixed;
       left: var(--gap);
-      bottom: calc(100px + var(--gap));
+     bottom: calc(100px + var(--gap));
       background: rgba(255, 255, 255, 0.8);
       padding: 6px 8px;
       font-size: 13px;
@@ -262,7 +262,7 @@
       .leaflet-control-layers { max-height: 38vh; }
 
       #coords {
-        bottom: calc(1000px + var(--gap));
+       bottom: calc(100px + var(--gap));
         font-size: 12px;
       }
       .rosa-sbg { width: 120px; height: 120px; }
@@ -281,6 +281,14 @@
 /* Garante que o popup fique acima de todos os botões e painéis */
 .leaflet-pane.leaflet-popup-pane {
   z-index: 5000 !important; /* maior que o --z-search (3000) */
+}
+
+.leaflet-top.leaflet-left {
+  top: 66px;         /* desce pra não colidir com o título */
+  left: var(--gap);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
   </style>
 </head>
@@ -322,7 +330,7 @@ L.Popup.prototype.options.autoPanPaddingBottomRight = L.point(10, 40);
 
     // Move o zoom para baixo à direita (não colide com título/busca)
     map.zoomControl.remove();
-    L.control.zoom({ position: 'bottomright' }).addTo(map);
+   L.control.zoom({ position: 'topleft' }).addTo(map);
 
     // Seta norte
     const north = L.control({position: "topright"});
