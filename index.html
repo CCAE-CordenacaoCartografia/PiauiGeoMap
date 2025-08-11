@@ -499,6 +499,12 @@ L.Popup.prototype.options.autoPanPaddingBottomRight = L.point(10, 40);
     // === Clicar fora limpa seleção ===
 // Clicar fora de qualquer território/município limpa seleção e fecha legenda
 map.on("click", function (e) {
+  // Se o clique veio numa feição (SVG com .leaflet-interactive), não faz nada
+  const t = e.originalEvent?.target;
+  if (t && (t.classList?.contains('leaflet-interactive') || t.closest?.('.leaflet-interactive'))) {
+    return;
+  }
+
   // Limpa seleção de território
   territorioSelecionado = null;
   territoriosLayer.eachLayer(layer => {
@@ -520,7 +526,7 @@ map.on("click", function (e) {
   if (legendDiv && toggleBtn && !legendDiv.classList.contains('collapsed')) {
     legendDiv.classList.add('collapsed');
     toggleBtn.textContent = 'Selecionar  territórios';
-    toggleBtn.classList.remove('attention'); // se quiser parar o piscar
+    toggleBtn.classList.remove('attention');
   }
 });
 
@@ -529,51 +535,90 @@ map.on("click", function (e) {
     setTimeout(() => {
       if (!document.querySelector('.legend-toggle')) addLegend();
     }, 2000);
+function onEachTerritorio(feature, layer) {
+  layer.on({
+    mouseover: highlightFeature,
+    mouseout: (e)=>territoriosLayer.resetStyle(e.target),
 
-    function onEachTerritorio(feature, layer) {
-      layer.on({
-        mouseover: highlightFeature,
-        mouseout: (e)=>territoriosLayer.resetStyle(e.target),
-        click: function () {
-          const territorioNome = feature.properties?.NM_TD;
-          const territorioCodigo = feature.properties?.fid;
-          const municipios = [];
-          municipiosLayer.eachLayer(mLayer=>{
-            const p = mLayer.feature?.properties || {};
-            if ((p.NM_TD && territorioNome && p.NM_TD === territorioNome) ||
-                (p.fid && territorioCodigo && p.fid === territorioCodigo)) {
-              municipios.push(p.NM_MUN || "(sem nome)");
-            }
-          });
-          municipios.sort((a,b)=>a.localeCompare(b,'pt-BR'));
-          const baseHtml = `<b>Território:</b> ${territorioNome || "-"}<br><b>Código:</b> ${territorioCodigo || "-"}<br><button class="download-btn" style="margin-top:5px;">Baixar KML deste território</button>`;
-          const listaHtml = municipios.length
-            ? `<hr><b>Municípios (${municipios.length}):</b><div style="max-height:150px;overflow:auto;margin-top:6px;"><ul style="margin:0;padding-left:18px;">${municipios.map(n=>`<li>${n}</li>`).join('')}</ul></div>`
-            : `<hr><i>Nenhum município associado encontrado.</i>`;
-          layer.bindPopup(baseHtml + listaHtml);
-          layer.on('popupopen', (e)=>{
-            const popupEl = e.popup.getElement();
-            const btn = popupEl.querySelector('.download-btn');
-            if (btn) btn.addEventListener('click', ()=>{
-              const nomeArquivo = (layer.feature.properties?.NM_TD || "territorio").replace(/[^\w\s-]/g,"").replace(/\s+/g,"_");
-              let kml = tokml({ type:"FeatureCollection", features:[layer.feature] });
-              const estiloKML = `
-                <Style id="customStyle">
-                  <LineStyle><color>ff00ffff</color><width>5</width></LineStyle>
-                  <PolyStyle><color>00ffffff</color><fill>1</fill><outline>1</outline></PolyStyle>
-                </Style>`;
-              kml = kml.replace("</Document>", `${estiloKML}</Document>`).replace(/<Placemark>/g,'<Placemark><styleUrl>#customStyle</styleUrl>');
-              const blob = new Blob([kml], { type:"application/vnd.google-earth.kml+xml" });
-              const url = URL.createObjectURL(blob); const a = document.createElement("a");
-              a.href = url; a.download = `${nomeArquivo}.kml`; a.click(); URL.revokeObjectURL(url);
-            });
-          });
-          layer.openPopup();
-          recolherLegenda();
+    // ▼ SUBSTITUIR A PARTIR DAQUI
+    click: function (e) {
+      // impede o clique subir pro mapa (senão ele fecha o popup)
+      L.DomEvent.stop(e);
+
+      const territorioNome  = feature.properties?.NM_TD;
+      const territorioCodigo = feature.properties?.fid;
+
+      // lista de municípios do território
+      const municipios = [];
+      municipiosLayer.eachLayer(mLayer=>{
+        const p = mLayer.feature?.properties || {};
+        if ((p.NM_TD && territorioNome && p.NM_TD === territorioNome) ||
+            (p.fid && territorioCodigo && p.fid === territorioCodigo)) {
+          municipios.push(p.NM_MUN || "(sem nome)");
         }
-        
       });
+      municipios.sort((a,b)=>a.localeCompare(b,'pt-BR'));
+
+      const baseHtml =
+        `<b>Território:</b> ${territorioNome || "-"}<br>`+
+        `<b>Código:</b> ${territorioCodigo || "-"}<br>`+
+        `<button class="download-btn" style="margin-top:5px;">Baixar KML deste território</button>`;
+
+      const listaHtml = municipios.length
+        ? `<hr><b>Municípios (${municipios.length}):</b>
+           <div style="max-height:150px;overflow:auto;margin-top:6px;">
+             <ul style="margin:0;padding-left:18px;">${municipios.map(n=>`<li>${n}</li>`).join('')}</ul>
+           </div>`
+        : `<hr><i>Nenhum município associado encontrado.</i>`;
+
+      layer.bindPopup(baseHtml + listaHtml);
+
+      // registra UMA VEZ o listener para este popup
+      layer.once('popupopen', (ev)=>{
+        const popupEl = ev.popup.getElement();
+        const btn = popupEl.querySelector('.download-btn');
+        if (!btn) return;
+
+        btn.addEventListener('click', (ev2)=>{
+          ev2.stopPropagation();
+
+          if (typeof tokml !== 'function') {
+            alert('Erro: biblioteca tokml não carregada.');
+            return;
+          }
+
+          const nomeArquivo = (layer.feature.properties?.NM_TD || "territorio")
+            .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+            .replace(/[^\w\s-]/g,"").replace(/\s+/g,"_");
+
+          let kml = tokml({ type:"FeatureCollection", features:[layer.feature] });
+
+          const estiloKML = `
+            <Style id="customStyle">
+              <LineStyle><color>ff00ffff</color><width>5</width></LineStyle>
+              <PolyStyle><color>00ffffff</color><fill>1</fill><outline>1</outline></PolyStyle>
+            </Style>`;
+          kml = kml
+            .replace("</Document>", `${estiloKML}</Document>`)
+            .replace(/<Placemark>/g,'<Placemark><styleUrl>#customStyle</styleUrl>');
+
+          const blob = new Blob([kml], { type:"application/vnd.google-earth.kml+xml" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url; a.download = `${nomeArquivo}.kml`;
+          document.body.appendChild(a); // anexa pra evitar bloqueio
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+        });
+      });
+
+      layer.openPopup();
     }
+    // ▲ ATÉ AQUI
+  });
+}
+
 
     const municipiosLayer = new L.GeoJSON.AJAX("municipios.geojson", { style: ()=>({ color:'#000', weight:1.5, fillOpacity:0 }), onEachFeature: onEachMunicipio });
     municipiosLayer.addTo(map);
