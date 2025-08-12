@@ -322,6 +322,15 @@
 
   <script>
     const map = L.map('map').setView([-7, -42], 7.48);
+    // Criar panes com ordem fixa
+map.createPane('pane-mask');        map.getPane('pane-mask').style.zIndex = 200;
+map.createPane('pane-base');        map.getPane('pane-base').style.zIndex = 300;
+map.createPane('pane-piaui');       map.getPane('pane-piaui').style.zIndex = 360;
+map.createPane('pane-biomas');      map.getPane('pane-biomas').style.zIndex = 370;
+map.createPane('pane-territorios'); map.getPane('pane-territorios').style.zIndex = 410;
+map.createPane('pane-municipios');  map.getPane('pane-municipios').style.zIndex = 420;
+map.createPane('pane-imperial');    map.getPane('pane-imperial').style.zIndex = 500;
+map.createPane('pane-litigio');     map.getPane('pane-litigio').style.zIndex = 550;
     // Ajusta autoPan para abrir popup deslocada dos botões do topo
 L.Popup.prototype.options.autoPan = true;
 L.Popup.prototype.options.autoPanPaddingTopLeft = L.point(10, 90);  // desloca pra baixo
@@ -495,9 +504,11 @@ L.Popup.prototype.options.autoPanPaddingBottomRight = L.point(10, 40);
     });
 
     // Layers de dados
-    const territoriosLayer = new L.GeoJSON.AJAX("territorios.geojson", { style: styleTerritorios, onEachFeature: onEachTerritorio });
-    territoriosLayer.on('data:loaded', addLegend);
-    territoriosLayer.addTo(map);
+   const territoriosLayer = new L.GeoJSON.AJAX("territorios.geojson", { 
+  pane: 'pane-territorios',
+  style: styleTerritorios, 
+  onEachFeature: onEachTerritorio 
+}).addTo(map);
     // === Clicar fora limpa seleção ===
 // Clicar fora de qualquer território/município limpa seleção e fecha legenda
 map.on("click", function (e) {
@@ -621,15 +632,17 @@ function onEachTerritorio(feature, layer) {
   });
 }
 
-
-    const municipiosLayer = new L.GeoJSON.AJAX("municipios.geojson", { style: ()=>({ color:'#000', weight:1.5, fillOpacity:0 }), onEachFeature: onEachMunicipio });
-    municipiosLayer.addTo(map);
-
+const municipiosLayer = new L.GeoJSON.AJAX("municipios.geojson", { 
+  pane: 'pane-municipios',
+  style: ()=>({ color:'#000', weight:1.5, fillOpacity:0 }), 
+  onEachFeature: onEachMunicipio 
+}).addTo(map);
     /* === Litígio === */
     function onEachLitigio(feature, layer){
       layer.on({ mouseover: highlightFeature, mouseout: e=>litigioLayer.resetStyle(e.target) });
-      layer.bindPopup(`<b>Litígio</b><br><div style="margin-top:5px;"><button class="download-btn" data-format="kml">Baixar KML</button> <button class="download-btn" data-format="geojson">GeoJSON</button> <button class="download-btn" data-format="shp">Shapefile</button></div>`);
-      layer.on("popupopen", ()=>{
+     layer.bindPopup(`<b>Litígio</b><br><div style="margin-top:5px;">
+  <button class="download-btn" data-format="kml">Baixar KML</button>
+</div>`);      layer.on("popupopen", ()=>{
         const btn = document.querySelector(".download-btn");
         if (btn) btn.onclick = ()=>{
           let kml = tokml({ type:"FeatureCollection", features:[feature] });
@@ -645,8 +658,11 @@ function onEachTerritorio(feature, layer) {
         };
       });
     }
-    const litigioLayer = new L.GeoJSON.AJAX("litigio.geojson", { style:{ color:'red', weight:2 }, onEachFeature: onEachLitigio }).addTo(map);
-
+   const litigioLayer = new L.GeoJSON.AJAX("litigio.geojson", { 
+  pane: 'pane-litigio',
+  style:{ color:'red', weight:2 }, 
+  onEachFeature: onEachLitigio 
+}).addTo(map);
     /* === Linha Imperial === */
     function onEachImperial(feature, layer){
       layer.on({ mouseover: highlightFeature, mouseout: e=>linhaImperialLayer.resetStyle(e.target) });
@@ -667,8 +683,11 @@ function onEachTerritorio(feature, layer) {
         };
       });
     }
-    const linhaImperialLayer = new L.GeoJSON.AJAX("linha_imperial.geojson", { style:{ color:'blue', weight:2, dashArray:'5,5' }, onEachFeature: onEachImperial }).addTo(map);
-    litigioLayer.bringToFront();
+    const linhaImperialLayer = new L.GeoJSON.AJAX("linha_imperial.geojson", { 
+  pane: 'pane-imperial',
+  style:{ color:'blue', weight:2, dashArray:'5,5' }, 
+  onEachFeature: onEachImperial 
+}).addTo(map);
 
     /* === Controle de camadas embrulhado === */
     const baseMaps = { "OpenStreetMap": osmLayer, "Esri Satélite": esriSat, "Esri Terrain": esriTerrain, "Esri Road": esriRoad };
@@ -801,13 +820,20 @@ function onEachTerritorio(feature, layer) {
 
     /* Estado do Piauí + Biomas recortados */
     fetch("piaui.geojson").then(r=>r.json()).then(piauiData=>{
-      const piauiLayer = L.geoJSON(piauiData,{ style:{ color:'yellow', weight:3, fillColor:'transparent', fillOpacity:0 }, onEachFeature:(f,l)=>l.bindPopup("Estado do Piauí") }).addTo(map);
-      piauiLayer.bringToBack();
+      const piauiLayer = L.geoJSON(piauiData,{ 
+  pane: 'pane-piaui',
+  style:{ color:'yellow', weight:3, fillColor:'transparent', fillOpacity:0 }, 
+  onEachFeature:(f,l)=>l.bindPopup("Estado do Piauí") 
+}).addTo(map);      piauiLayer.bringToBack();
       layersControl.addOverlay(piauiLayer,"Estado do Piauí");
 
       const worldBounds = turf.bboxPolygon([-90,-60,-25,15]);
       const mask = turf.difference(worldBounds, piauiData.features[0]);
-      L.geoJSON(mask,{ style:{ fillColor:'black', fillOpacity:0.5, color:'black', weight:0 }, interactive:false }).addTo(map);
+     L.geoJSON(mask,{ 
+  pane: 'pane-mask',
+  style:{ fillColor:'black', fillOpacity:0.5, color:'black', weight:0 }, 
+  interactive:false 
+}).addTo(map);
 
       function styleBiomas(feature){
         const bioma=(feature.properties.Bioma||feature.properties.bioma||"").toLowerCase();
@@ -830,10 +856,11 @@ function onEachTerritorio(feature, layer) {
             if(inter){ inter.properties=f.properties; biomasRecortados.features.push(inter); }
           }catch(e){ console.warn("Erro ao recortar bioma:", e); }
         });
-        const biomasLayer=L.geoJSON(biomasRecortados,{
-          style: styleBiomas,
-          onEachFeature: (feature, layer)=>layer.bindPopup(`<b>Bioma:</b> ${feature.properties.Bioma||feature.properties.bioma||"Bioma"}`)
-        }).addTo(map);
+        const biomasLayer = L.geoJSON(biomasRecortados,{
+  pane: 'pane-biomas',
+  style: styleBiomas,
+  onEachFeature: (feature, layer)=>layer.bindPopup(`<b>Bioma:</b> ${feature.properties.Bioma||feature.properties.bioma||"Bioma"}`)
+}).addTo(map);
         biomasLayer.bringToBack();
         layersControl.addOverlay(biomasLayer, "Biomas");
       });
