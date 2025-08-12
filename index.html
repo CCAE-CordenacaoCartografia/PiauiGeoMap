@@ -1,3 +1,5 @@
+
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -331,6 +333,9 @@ map.createPane('pane-territorios'); map.getPane('pane-territorios').style.zIndex
 map.createPane('pane-municipios');  map.getPane('pane-municipios').style.zIndex = 420;
 map.createPane('pane-imperial');    map.getPane('pane-imperial').style.zIndex = 500;
 map.createPane('pane-litigio');     map.getPane('pane-litigio').style.zIndex = 550;
+map.createPane('pane-upload');
+map.getPane('pane-upload').style.zIndex = 6000;
+
     // Ajusta autoPan para abrir popup deslocada dos botões do topo
 L.Popup.prototype.options.autoPan = true;
 L.Popup.prototype.options.autoPanPaddingTopLeft = L.point(10, 90);  // desloca pra baixo
@@ -554,81 +559,123 @@ function onEachTerritorio(feature, layer) {
     mouseout: (e)=>territoriosLayer.resetStyle(e.target),
 
     // ▼ SUBSTITUIR A PARTIR DAQUI
-    click: function (e) {
-      // impede o clique subir pro mapa (senão ele fecha o popup)
-      L.DomEvent.stop(e);
+click: function (e) {
+  // impede o clique subir pro mapa (senão ele fecha o popup)
+  L.DomEvent.stop(e);
 
-      const territorioNome  = feature.properties?.NM_TD;
-      const territorioCodigo = feature.properties?.fid;
+  const territorioNome  = feature.properties?.NM_TD;
+  const territorioCodigo = feature.properties?.fid;
 
-      // lista de municípios do território
-      const municipios = [];
-      municipiosLayer.eachLayer(mLayer=>{
-        const p = mLayer.feature?.properties || {};
-        if ((p.NM_TD && territorioNome && p.NM_TD === territorioNome) ||
-            (p.fid && territorioCodigo && p.fid === territorioCodigo)) {
-          municipios.push(p.NM_MUN || "(sem nome)");
-        }
-      });
-      municipios.sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  // ===== Estatísticas agregadas do território =====
+  // (requer o bloco de cálculo após a criação do municipiosLayer)
+  const tdKey   = String(territorioCodigo ?? territorioNome);
+  const tdStats = (typeof territoryStats !== 'undefined') ? territoryStats.get(tdKey) : null;
 
-      const baseHtml =
-        `<b>Território:</b> ${territorioNome || "-"}<br>`+
-        `<b>Código:</b> ${territorioCodigo || "-"}<br>`+
-        `<button class="download-btn" style="margin-top:5px;">Baixar KML deste território</button>`;
+  // Formatação numérica
+  function fmt(n, d=2){
+    const v = Number(n);
+    if (!Number.isFinite(v)) return '-';
+    return v.toLocaleString('pt-BR', { minimumFractionDigits:d, maximumFractionDigits:d });
+  }
 
-      const listaHtml = municipios.length
-        ? `<hr><b>Municípios (${municipios.length}):</b>
-           <div style="max-height:150px;overflow:auto;margin-top:6px;">
-             <ul style="margin:0;padding-left:18px;">${municipios.map(n=>`<li>${n}</li>`).join('')}</ul>
-           </div>`
-        : `<hr><i>Nenhum município associado encontrado.</i>`;
+  // Monta tabela de totais
+  let totaisHtml = '';
+  if (tdStats) {
+    const pibExibicao = tdStats.pib * 1000; // mantém o padrão do seu popup de município
+    totaisHtml =
+      `<hr><b>Totais do Território</b>
+       <table style="border-collapse:collapse;width:100%;font-size:.95em;margin-top:6px;">
+         <tr>
+           <th style="text-align:left;padding:6px 8px;border-bottom:1px solid #ddd;font-weight:normal;">População (Censo 2022)</th>
+           <td style="text-align:right;padding:6px 8px;border-bottom:1px solid #ddd;">${fmt(tdStats.pop,0)}</td>
+         </tr>
+         <tr>
+           <th style="text-align:left;padding:6px 8px;border-bottom:1px solid #ddd;font-weight:normal;">PIB 2021 (R$)</th>
+           <td style="text-align:right;padding:6px 8px;border-bottom:1px solid #ddd;">${fmt(pibExibicao,2)}</td>
+         </tr>
+         <tr>
+           <th style="text-align:left;padding:6px 8px;border-bottom:1px solid #ddd;font-weight:normal;">População (% do Piauí)</th>
+           <td style="text-align:right;padding:6px 8px;border-bottom:1px solid #ddd;">${fmt(tdStats.pop_pct_piaui,2)}%</td>
+         </tr>
+         <tr>
+           <th style="text-align:left;padding:6px 8px;border-bottom:1px solid #ddd;font-weight:normal;">PIB (% do Piauí)</th>
+           <td style="text-align:right;padding:6px 8px;border-bottom:1px solid #ddd;">${fmt(tdStats.pib_pct_piaui,2)}%</td>
+         </tr>
+       </table>`;
+  } else {
+    totaisHtml = `<hr><i>Sem estatísticas agregadas para este território (aguarde o carregamento dos municípios).</i>`;
+  }
 
-      layer.bindPopup(baseHtml + listaHtml);
-
-      // registra UMA VEZ o listener para este popup
-      layer.once('popupopen', (ev)=>{
-        const popupEl = ev.popup.getElement();
-        const btn = popupEl.querySelector('.download-btn');
-        if (!btn) return;
-
-        btn.addEventListener('click', (ev2)=>{
-          ev2.stopPropagation();
-
-          if (typeof tokml !== 'function') {
-            alert('Erro: biblioteca tokml não carregada.');
-            return;
-          }
-
-          const nomeArquivo = (layer.feature.properties?.NM_TD || "territorio")
-            .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
-            .replace(/[^\w\s-]/g,"").replace(/\s+/g,"_");
-
-          let kml = tokml({ type:"FeatureCollection", features:[layer.feature] });
-
-          const estiloKML = `
-            <Style id="customStyle">
-              <LineStyle><color>ff00ffff</color><width>5</width></LineStyle>
-              <PolyStyle><color>00ffffff</color><fill>1</fill><outline>1</outline></PolyStyle>
-            </Style>`;
-          kml = kml
-            .replace("</Document>", `${estiloKML}</Document>`)
-            .replace(/<Placemark>/g,'<Placemark><styleUrl>#customStyle</styleUrl>');
-
-          const blob = new Blob([kml], { type:"application/vnd.google-earth.kml+xml" });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url; a.download = `${nomeArquivo}.kml`;
-          document.body.appendChild(a); // anexa pra evitar bloqueio
-          a.click();
-          a.remove();
-          URL.revokeObjectURL(url);
-        });
-      });
-
-      layer.openPopup();
+  // ===== Lista de municípios do território =====
+  const municipios = [];
+  municipiosLayer.eachLayer(mLayer=>{
+    const p = mLayer.feature?.properties || {};
+    if ((p.NM_TD && territorioNome && p.NM_TD === territorioNome) ||
+        (p.fid && territorioCodigo && p.fid === territorioCodigo)) {
+      municipios.push(p.NM_MUN || "(sem nome)");
     }
-    // ▲ ATÉ AQUI
+  });
+  municipios.sort((a,b)=>a.localeCompare(b,'pt-BR'));
+
+  const baseHtml =
+    `<b>Território:</b> ${territorioNome || "-"}<br>`+
+    `<b>Código:</b> ${territorioCodigo || "-"}<br>`+
+    `<button class="download-btn" style="margin-top:5px;">Baixar KML deste território</button>` +
+    totaisHtml;
+
+  const listaHtml = municipios.length
+    ? `<hr><b>Municípios (${municipios.length}):</b>
+       <div style="max-height:150px;overflow:auto;margin-top:6px;">
+         <ul style="margin:0;padding-left:18px;">${municipios.map(n=>`<li>${n}</li>`).join('')}</ul>
+       </div>`
+    : `<hr><i>Nenhum município associado encontrado.</i>`;
+
+  layer.bindPopup(baseHtml + listaHtml);
+
+  // registra UMA VEZ o listener para este popup
+  layer.once('popupopen', (ev)=>{
+    const popupEl = ev.popup.getElement();
+    const btn = popupEl.querySelector('.download-btn');
+    if (!btn) return;
+
+    btn.addEventListener('click', (ev2)=>{
+      ev2.stopPropagation();
+
+      if (typeof tokml !== 'function') {
+        alert('Erro: biblioteca tokml não carregada.');
+        return;
+      }
+
+      const nomeArquivo = (layer.feature.properties?.NM_TD || "territorio")
+        .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+        .replace(/[^\w\s-]/g,"").replace(/\s+/g,"_");
+
+      let kml = tokml({ type:"FeatureCollection", features:[layer.feature] });
+
+      const estiloKML = `
+        <Style id="customStyle">
+          <LineStyle><color>ff00ffff</color><width>5</width></LineStyle>
+          <PolyStyle><color>00ffffff</color><fill>1</fill><outline>1</outline></PolyStyle>
+        </Style>`;
+      kml = kml
+        .replace("</Document>", `${estiloKML}</Document>`)
+        .replace(/<Placemark>/g,'<Placemark><styleUrl>#customStyle</styleUrl>');
+
+      const blob = new Blob([kml], { type:"application/vnd.google-earth.kml+xml" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `${nomeArquivo}.kml`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    });
+  });
+
+  layer.openPopup();
+}
+// ▲ ATÉ AQUI
+
   });
 }
 
@@ -637,6 +684,44 @@ const municipiosLayer = new L.GeoJSON.AJAX("municipios.geojson", {
   style: ()=>({ color:'#000', weight:1.5, fillOpacity:0 }), 
   onEachFeature: onEachMunicipio 
 }).addTo(map);
+const territoryStats = new Map();
+const stateTotals = { pop: 0, pib: 0 };
+function num(n){ const v = Number(n); return Number.isFinite(v) ? v : 0; }
+
+municipiosLayer.on('data:loaded', () => {
+  territoryStats.clear();
+  stateTotals.pop = 0;
+  stateTotals.pib = 0;
+
+  municipiosLayer.eachLayer(layer => {
+    const p = layer?.feature?.properties || {};
+    const nomeTD = p.NM_TD || '(sem território)';
+    const codTD  = p.fid ?? p.CD_TD ?? nomeTD;
+
+    const pop = num(p.pop_censo2022);
+    const pib = num(p.pib_2021); // se precisar multiplicar, faça na exibição
+
+    stateTotals.pop += pop;
+    stateTotals.pib += pib;
+
+    const key = String(codTD);
+    const cur = territoryStats.get(key) || {
+      codigo: codTD,
+      nome: nomeTD,
+      pop: 0,
+      pib: 0
+    };
+    cur.pop += pop;
+    cur.pib += pib;
+    territoryStats.set(key, cur);
+  });
+
+  for (const [key, td] of territoryStats.entries()) {
+    td.pop_pct_piaui = stateTotals.pop ? (td.pop / stateTotals.pop) * 100 : 0;
+    td.pib_pct_piaui = stateTotals.pib ? (td.pib / stateTotals.pib) * 100 : 0;
+    territoryStats.set(key, td);
+  }
+});
     /* === Litígio === */
     function onEachLitigio(feature, layer){
       layer.on({ mouseover: highlightFeature, mouseout: e=>litigioLayer.resetStyle(e.target) });
@@ -853,10 +938,21 @@ const municipiosLayer = new L.GeoJSON.AJAX("municipios.geojson", {
       uploadInputEl.value='';
     });
     function addKMLTextToMap(kmlText, layerName){
-      const kmlLayer=omnivore.kml.parse(kmlText).addTo(map);
-      if (layersControl) layersControl.addOverlay(kmlLayer, layerName);
-      try { map.fitBounds(kmlLayer.getBounds()); } catch(_) {}
-    }
+  // cria um GeoJSON “alvo” já amarrado ao pane de upload (topo)
+  const alvo = L.geoJSON(null, { pane: 'pane-upload' });
+
+  // o omnivore vai preencher esse GeoJSON alvo
+  const kmlLayer = omnivore.kml.parse(kmlText, null, alvo).addTo(map);
+
+  // opcional: garantir topo dentro do próprio pane
+  if (kmlLayer.bringToFront) kmlLayer.bringToFront();
+
+  // adiciona no controle de camadas
+  if (layersControl) layersControl.addOverlay(kmlLayer, layerName);
+
+  // ajusta o mapa
+  try { map.fitBounds(kmlLayer.getBounds()); } catch (_) {}
+}
 
     /* Rosa dos Ventos (fixa) */
     const rosaSBG = L.control({ position: "bottomleft" });
@@ -1079,5 +1175,43 @@ function recolherLegenda() {
   }
 }
   </script>
+<!-- Code injected by live-server -->
+<script>
+	// <![CDATA[  <-- For SVG support
+	if ('WebSocket' in window) {
+		(function () {
+			function refreshCSS() {
+				var sheets = [].slice.call(document.getElementsByTagName("link"));
+				var head = document.getElementsByTagName("head")[0];
+				for (var i = 0; i < sheets.length; ++i) {
+					var elem = sheets[i];
+					var parent = elem.parentElement || head;
+					parent.removeChild(elem);
+					var rel = elem.rel;
+					if (elem.href && typeof rel != "string" || rel.length == 0 || rel.toLowerCase() == "stylesheet") {
+						var url = elem.href.replace(/(&|\?)_cacheOverride=\d+/, '');
+						elem.href = url + (url.indexOf('?') >= 0 ? '&' : '?') + '_cacheOverride=' + (new Date().valueOf());
+					}
+					parent.appendChild(elem);
+				}
+			}
+			var protocol = window.location.protocol === 'http:' ? 'ws://' : 'wss://';
+			var address = protocol + window.location.host + window.location.pathname + '/ws';
+			var socket = new WebSocket(address);
+			socket.onmessage = function (msg) {
+				if (msg.data == 'reload') window.location.reload();
+				else if (msg.data == 'refreshcss') refreshCSS();
+			};
+			if (sessionStorage && !sessionStorage.getItem('IsThisFirstTime_Log_From_LiveServer')) {
+				console.log('Live reload enabled.');
+				sessionStorage.setItem('IsThisFirstTime_Log_From_LiveServer', true);
+			}
+		})();
+	}
+	else {
+		console.error('Upgrade your browser. This Browser is NOT supported WebSocket for Live-Reloading.');
+	}
+	// ]]>
+</script>
 </body>
 </html>
