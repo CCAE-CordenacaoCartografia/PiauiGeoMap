@@ -378,6 +378,8 @@ L.Popup.prototype.options.autoPanPaddingBottomRight = L.point(10, 40);
           if(["pib_porcent_Piaui","pop_porcent_Piaui","pib_porcent_TD","pop_porcent_TD"].includes(key)) return num.toFixed(2).replace('.',',')+"%";
           if(key==="CD_MUN") return String(Math.trunc(num));
           if(key==="pop_censo2022") return num.toLocaleString('pt-BR',{maximumFractionDigits:0});
+           if(key==="pib_2021") return formatNumeroPTBR(num * 1000, 2);
+
           return formatNumeroPTBR(num,2);
         }
         return val;
