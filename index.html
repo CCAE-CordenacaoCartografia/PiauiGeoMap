@@ -709,6 +709,59 @@ const municipiosLayer = new L.GeoJSON.AJAX("municipios.geojson", {
         document.body.appendChild(wrapper);
       }
     });
+    function recolherCamadas() {
+  const panel = document.querySelector('.leaflet-control-layers');
+  if (panel && !panel.classList.contains('collapsed-panel')) {
+    panel.classList.add('collapsed-panel');
+  }
+}
+
+(function ativarFechamentoCamadas(){
+  // fecha ao clicar fora
+  const onBodyClick = (e) => {
+    const wrapper = document.getElementById('camadasWrapper');
+    const panel = document.querySelector('.leaflet-control-layers');
+    if (!wrapper || !panel) return;
+
+    const aberto = !panel.classList.contains('collapsed-panel');
+    // se estiver fechado ou o clique foi dentro do wrapper, não faz nada
+    if (!aberto || wrapper.contains(e.target)) return;
+
+    recolherCamadas();
+  };
+
+  // fecha com Esc
+  const onEsc = (e) => {
+    if (e.key === 'Escape') recolherCamadas();
+  };
+
+  // impede que cliques dentro do wrapper “vazem” para o documento
+  const bloquearDentro = () => {
+    const wrapper = document.getElementById('camadasWrapper');
+    if (!wrapper) return;
+    wrapper.addEventListener('click', e => e.stopPropagation());
+    wrapper.addEventListener('touchstart', e => e.stopPropagation(), {passive:true});
+  };
+
+  // inicializa agora e também quando o mapa criar o wrapper
+  document.addEventListener('click', onBodyClick);
+  document.addEventListener('touchstart', onBodyClick, {passive:true});
+  document.addEventListener('keydown', onEsc);
+
+  // se o wrapper já existir, bloqueia já; senão, tenta depois
+  if (document.getElementById('camadasWrapper')) {
+    bloquearDentro();
+  } else {
+    // garante após criação pelo map.whenReady
+    const obs = new MutationObserver(() => {
+      if (document.getElementById('camadasWrapper')) {
+        bloquearDentro();
+        obs.disconnect();
+      }
+    });
+    obs.observe(document.body, {childList:true, subtree:true});
+  }
+})();
 
     /* === Legenda (montada diretamente no body; robusto) === */
     function addLegend() {
