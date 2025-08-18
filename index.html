@@ -292,6 +292,23 @@
   flex-direction: column;
   gap: 8px;
 }
+#creditosLegenda {
+  position: fixed;
+  bottom: 18px;
+  left: 46%;
+  transform: translateX(-50%);
+  background: white;
+  padding: 4px 4px;          /* ajusta espaçamento interno */
+  font-size: 9px;
+  border-radius: 3px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.25);
+  display: flex;             /* centraliza com flexbox */
+  align-items: center;       /* centraliza vertical */
+  justify-content: center;   /* centraliza horizontal */
+  text-align: center;        /* garante que linhas múltiplas fiquem centralizadas */
+  z-index: 2000;
+  line-height: 1.4;
+}
   </style>
 </head>
 <body>
@@ -879,9 +896,7 @@ municipiosLayer.on('data:loaded', () => {
         legendDiv.appendChild(item);
       });
 
-      legendDiv.insertAdjacentHTML('beforeend',
-        '<hr style="margin:5px 0;"><small>Coordenação de Cartografia e Análise Espacial<br>CCAE/CIET/SEPLAN</small>'
-      );
+     
 
       toggleBtn.addEventListener('click', () => {
         legendDiv.classList.toggle('collapsed');
@@ -1211,5 +1226,11 @@ function recolherLegenda() {
 	}
 	// ]]>
 </script>
+<div id="creditosLegenda">
+  Coordenação de Cartografia e Análise Espacial<br>
+ CCAE/GEID/DEAE/CIET/SEPLAN
+</div>
+
+
 </body>
 </html>
