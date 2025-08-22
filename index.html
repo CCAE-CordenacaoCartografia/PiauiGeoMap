@@ -1,5 +1,3 @@
-
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -309,6 +307,11 @@
   z-index: 2000;
   line-height: 1.4;
 }
+.my-location-dot{
+  width:14px; height:14px;
+  background:#4285F4; border:2px solid #fff; border-radius:50%;
+  box-shadow: 0 0 0 6px rgba(66,133,244,.25), 0 2px 6px rgba(0,0,0,.35);
+}
   </style>
 </head>
 <body>
@@ -341,6 +344,57 @@
 
   <script>
     const map = L.map('map').setView([-7, -42], 7.48);
+    // ===== Acompanhar localização em tempo real =====
+let geoMarker = null;
+let geoAccuracy = null;
+
+const myLocIcon = L.divIcon({
+  className: '',
+  html: '<div class="my-location-dot"></div>',
+  iconSize: [18,18],
+  iconAnchor: [9,9]
+});
+
+function onLocationFound(e){
+  const latlng = e.latlng;
+  const radius = e.accuracy || 0;
+
+  if (!geoMarker){
+    geoMarker = L.marker(latlng, { icon: myLocIcon, pane: 'markerPane', interactive:false }).addTo(map);
+  } else {
+    geoMarker.setLatLng(latlng);
+  }
+
+  if (!geoAccuracy){
+    geoAccuracy = L.circle(latlng, {
+      radius,
+      color: '#4285F4',
+      weight: 1,
+      fillColor: '#4285F4',
+      fillOpacity: 0.12,
+      pane: 'overlayPane',
+      interactive:false
+    }).addTo(map);
+  } else {
+    geoAccuracy.setLatLng(latlng).setRadius(radius);
+  }
+}
+
+function onLocationError(err){
+  console.warn('Erro localização:', err.message);
+  alert('Não consegui acessar sua localização. HTTPS obrigatório.');
+}
+
+map.on('locationfound', onLocationFound);
+map.on('locationerror', onLocationError);
+
+map.locate({
+  watch: true,            // acompanha continuamente
+  setView: true,          // centraliza na primeira vez
+  enableHighAccuracy: true,
+  maxZoom: 17
+});
+
     // Criar panes com ordem fixa
 map.createPane('pane-mask');        map.getPane('pane-mask').style.zIndex = 200;
 map.createPane('pane-base');        map.getPane('pane-base').style.zIndex = 300;
