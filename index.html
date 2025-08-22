@@ -1,3 +1,6 @@
+
+
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -345,6 +348,7 @@
   <script>
     const map = L.map('map').setView([-7, -42], 7.48);
     // ===== Acompanhar localização em tempo real =====
+// ===== Acompanhar localização em tempo real (sem zoom) =====
 let geoMarker = null;
 let geoAccuracy = null;
 
@@ -390,10 +394,11 @@ map.on('locationerror', onLocationError);
 
 map.locate({
   watch: true,            // acompanha continuamente
-  setView: true,          // centraliza na primeira vez
+  setView: false,         // <<< NÃO centraliza nem aproxima
   enableHighAccuracy: true,
   maxZoom: 17
 });
+
 
     // Criar panes com ordem fixa
 map.createPane('pane-mask');        map.getPane('pane-mask').style.zIndex = 200;
