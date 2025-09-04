@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -366,19 +367,7 @@ function onLocationFound(e){
     geoMarker.setLatLng(latlng);
   }
 
-  if (!geoAccuracy){
-    geoAccuracy = L.circle(latlng, {
-      radius,
-      color: '#4285F4',
-      weight: 1,
-      fillColor: '#4285F4',
-      fillOpacity: 0.12,
-      pane: 'overlayPane',
-      interactive:false
-    }).addTo(map);
-  } else {
-    geoAccuracy.setLatLng(latlng).setRadius(radius);
-  }
+ 
 }
 
 function onLocationError(err){
